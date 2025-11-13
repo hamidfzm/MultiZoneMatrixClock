@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Zone Matrix Clock | ESP8266 LED Matrix Clock</title>
+    <meta name="description" content="A WiFi-enabled LED matrix clock for ESP8266 that displays time from multiple timezones. Features automatic NTP synchronization, DST handling, and web-based configuration.">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --accent-color: #667eea;
+            --bg-gradient-start: #667eea;
+            --bg-gradient-end: #764ba2;
+            --text-primary: #ffffff;
+            --text-secondary: #333333;
+            --card-bg: #ffffff;
+            --card-bg-light: #f8f9fa;
+            --border-color: #e0e0e0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px 0;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --primary-color: #667eea;
+                --secondary-color: #764ba2;
+                --accent-color: #667eea;
+                --bg-gradient-start: #1a1a2e;
+                --bg-gradient-end: #16213e;
+                --text-primary: #ffffff;
+                --text-secondary: #b8b8b8;
+                --card-bg: #0f3460;
+                --card-bg-light: #1a2a4a;
+                --border-color: #2a3f5f;
+            }
+
+            body {
+                background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 0 10px;
+            }
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 2rem 0;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            header {
+                background: rgba(15, 52, 96, 0.95);
+                border-bottom: 2px solid var(--border-color);
+            }
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            h1 {
+                background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                text-shadow: none;
+            }
+        }
+
+        .badges {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            padding: 0.5rem 1rem;
+            background: var(--card-bg-light);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .badge.blue {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .badge.green {
+            color: #66bb6a;
+            border-color: #66bb6a;
+            background: rgba(102, 187, 106, 0.1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .badge {
+                background: var(--card-bg);
+                border-color: var(--border-color);
+                color: var(--text-secondary);
+            }
+
+            .badge.blue {
+                color: #4fc3f7;
+                border-color: #4fc3f7;
+                background: rgba(79, 195, 247, 0.1);
+            }
+        }
+
+        .hero {
+            padding: 4rem 0;
+            text-align: center;
+        }
+
+        .showcase {
+            max-width: 800px;
+            margin: 2rem auto;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 2px solid var(--border-color);
+        }
+
+        .showcase img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .intro {
+            font-size: 1.3rem;
+            color: rgba(255, 255, 255, 0.95);
+            margin-bottom: 3rem;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .intro {
+                color: rgba(255, 255, 255, 0.95);
+            }
+        }
+
+        .features {
+            margin: 5rem 0;
+        }
+
+        .features .container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 4rem;
+            row-gap: 4rem;
+        }
+
+        .feature-card {
+            background: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 20px;
+            border: none;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-card h3 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+            font-weight: bold;
+            word-wrap: break-word;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            line-height: 1.7;
+            word-wrap: break-word;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .feature-card {
+                background: var(--card-bg);
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            }
+
+            .feature-card:hover {
+                box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
+            }
+
+            .feature-card h3 {
+                color: #4fc3f7;
+            }
+
+            .feature-card p {
+                color: var(--text-secondary);
+            }
+        }
+
+        /* Tablet and below */
+        @media (max-width: 1024px) {
+            .features .container {
+                gap: 3rem;
+                row-gap: 3rem;
+            }
+        }
+
+        /* Mobile landscape and below */
+        @media (max-width: 768px) {
+            .features {
+                margin: 3rem 0;
+            }
+
+            .features .container {
+                grid-template-columns: 1fr;
+                gap: 2.5rem;
+                row-gap: 2.5rem;
+                justify-items: center;
+            }
+
+            .feature-card {
+                padding: 2rem;
+                max-width: 500px;
+            }
+
+            .feature-card h3 {
+                font-size: 1.2rem;
+            }
+        }
+
+        /* Small mobile */
+        @media (max-width: 480px) {
+            .features {
+                margin: 2rem 0;
+            }
+
+            .features .container {
+                gap: 2rem;
+                row-gap: 2rem;
+            }
+
+            .feature-card {
+                padding: 1.5rem;
+                max-width: 100%;
+            }
+
+            .feature-icon {
+                font-size: 2rem;
+                margin-bottom: 1rem;
+            }
+
+            .feature-card h3 {
+                font-size: 1.1rem;
+                margin-bottom: 0.75rem;
+            }
+
+            .feature-card p {
+                font-size: 0.95rem;
+                line-height: 1.6;
+            }
+        }
+
+        /* Extra small mobile */
+        @media (max-width: 360px) {
+            .features .container {
+                gap: 1.5rem;
+                row-gap: 1.5rem;
+            }
+
+            .feature-card {
+                padding: 1.25rem;
+            }
+
+            .feature-card h3 {
+                font-size: 1rem;
+            }
+
+            .feature-card p {
+                font-size: 0.9rem;
+            }
+        }
+
+        section {
+            margin: 4rem 0;
+        }
+
+        h2 {
+            font-size: 2rem;
+            color: var(--text-primary);
+            margin-bottom: 3rem;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            h2 {
+                color: var(--text-primary);
+            }
+        }
+
+        .content-card {
+            background: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 20px;
+            border: none;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 2rem;
+        }
+
+        .content-card h3 {
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .content-card {
+                background: var(--card-bg);
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            }
+
+            .content-card h3 {
+                color: #4fc3f7;
+            }
+        }
+
+        .content-card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .content-card li {
+            padding: 0.75rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        .content-card li:before {
+            content: "⚙️";
+            position: absolute;
+            left: 0;
+            font-size: 0.9rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        table th,
+        table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        table th {
+            background: rgba(102, 126, 234, 0.1);
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        table tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            table th {
+                background: rgba(79, 195, 247, 0.1);
+                color: #4fc3f7;
+            }
+
+            table tr:hover {
+                background: rgba(79, 195, 247, 0.05);
+            }
+        }
+
+        .code-block {
+            background: var(--card-bg-light);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        .code-block code {
+            color: var(--primary-color);
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        code {
+            background: var(--card-bg-light);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            color: var(--primary-color);
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .code-block {
+                background: var(--card-bg-light);
+                border-color: var(--border-color);
+            }
+
+            .code-block code {
+                color: #4fc3f7;
+            }
+
+            code {
+                background: var(--card-bg-light);
+                color: #4fc3f7;
+            }
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 3rem 0;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-block;
+            border: 2px solid;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            border-color: transparent;
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-secondary {
+            background: var(--card-bg);
+            border-color: var(--card-bg);
+            color: var(--primary-color);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.9);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .btn-secondary {
+                background: var(--card-bg);
+                border-color: var(--border-color);
+                color: var(--primary-color);
+            }
+
+            .btn-secondary:hover {
+                background: rgba(15, 52, 96, 0.9);
+            }
+        }
+
+        footer {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem 0;
+            text-align: center;
+            border-top: 2px solid rgba(255, 255, 255, 0.2);
+            margin-top: 4rem;
+            color: var(--text-secondary);
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .footer-links a {
+            color: var(--primary-color);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--secondary-color);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            footer {
+                background: rgba(15, 52, 96, 0.95);
+                border-top: 2px solid var(--border-color);
+                color: var(--text-secondary);
+            }
+
+            .footer-links a {
+                color: #4fc3f7;
+            }
+
+            .footer-links a:hover {
+                color: var(--primary-color);
+            }
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .intro {
+                font-size: 1.1rem;
+            }
+
+            .hero {
+                padding: 2rem 0;
+            }
+
+            .showcase {
+                margin: 1.5rem auto;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.75rem;
+            }
+
+            .intro {
+                font-size: 1rem;
+            }
+
+            .hero {
+                padding: 1.5rem 0;
+            }
+
+            section {
+                margin: 2rem 0;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+                margin-bottom: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <h1>⏰ Multi-Zone Matrix Clock</h1>
+                <div class="badges">
+                    <span class="badge blue">ESP8266</span>
+                    <span class="badge green">Arduino</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <p class="intro">
+                    A WiFi-enabled LED matrix clock for ESP8266 that displays time from multiple timezones. 
+                    Features automatic NTP synchronization, DST handling, and a web-based configuration interface.
+                </p>
+                <div class="showcase">
+                    <img src="../images/showcase.png" alt="Multi-Zone Matrix Clock Showcase">
+                </div>
+                <div class="showcase" style="margin-top: 2rem;">
+                    <img src="../images/web-interface.jpg" alt="Web Configuration Interface">
+                </div>
+            </div>
+        </section>
+
+        <section class="features">
+            <div class="container">
+                <div class="feature-card">
+                    <div class="feature-icon">🌍</div>
+                    <h3>Multiple Timezone Support</h3>
+                    <p>Display time from up to 6 different timezones (UTC, CST, EST, PST, IRST, and more)</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⏰</div>
+                    <h3>Automatic Time Sync</h3>
+                    <p>NTP synchronization ensures accurate time without manual adjustment</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🌅</div>
+                    <h3>DST Handling</h3>
+                    <p>Automatic Daylight Saving Time adjustments for US timezones</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <h3>Web Configuration</h3>
+                    <p>Easy-to-use web interface for settings and WiFi configuration</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔌</div>
+                    <h3>WiFi Manager</h3>
+                    <p>Automatic WiFi configuration portal on first boot</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎨</div>
+                    <h3>Customizable Display</h3>
+                    <p>Adjustable brightness and 12/24-hour format options</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <div class="container">
+                <h2>Hardware Requirements</h2>
+                <div class="content-card">
+                    <ul>
+                        <li><strong>ESP8266</strong> (NodeMCU, Wemos D1 Mini, or similar)</li>
+                        <li><strong>MAX7219 LED Matrix Display</strong> (4 modules, FC16 hardware type)</li>
+                        <li><strong>Jumper wires</strong> for connections</li>
+                        <li><strong>5V power supply</strong> (USB or external adapter)</li>
+                    </ul>
+                </div>
+
+                <div class="content-card">
+                    <h3>Pin Connections</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ESP8266 Pin</th>
+                                <th>MAX7219 Pin</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>D5</td>
+                                <td>CLK</td>
+                                <td>Clock</td>
+                            </tr>
+                            <tr>
+                                <td>D7</td>
+                                <td>DIN</td>
+                                <td>Data In</td>
+                            </tr>
+                            <tr>
+                                <td>D8</td>
+                                <td>CS</td>
+                                <td>Chip Select</td>
+                            </tr>
+                            <tr>
+                                <td>5V</td>
+                                <td>VCC</td>
+                                <td>Power</td>
+                            </tr>
+                            <tr>
+                                <td>GND</td>
+                                <td>GND</td>
+                                <td>Ground</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p style="margin-top: 1rem; color: var(--text-secondary);">
+                        <em>Note: The pin definitions can be modified in <code>config.h</code> if needed.</em>
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <div class="container">
+                <h2>3D Printing</h2>
+                <div class="content-card">
+                    <p>This project includes 3MF files for 3D printing the enclosure and mounting components. 
+                    All files are optimized for <strong>Bambu Lab A1 Mini</strong> and are located in the <code>stl/</code> directory.</p>
+                    
+                    <h3 style="margin-top: 2rem;">Available 3MF Files</h3>
+                    <ul>
+                        <li><code>FRONT.3mf</code> - Front panel/enclosure</li>
+                        <li><code>FRONT Wemos D1 Mini.3mf</code> - Front panel with Wemos D1 Mini mounting</li>
+                        <li><code>BACK.3mf</code> - Back panel/enclosure</li>
+                        <li><code>FRAME FRONT.3mf</code> - Front frame component</li>
+                        <li><code>FRAME BACK.3mf</code> - Back frame component</li>
+                        <li><code>2 x MATRIX HOLDER.3mf</code> - Matrix display holder (print 2x)</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <div class="container">
+                <h2>Quick Start</h2>
+                <div class="content-card">
+                    <h3>1. Install Libraries</h3>
+                    <p>Install the following libraries via Arduino IDE Library Manager:</p>
+                    <ul>
+                        <li>ESP8266WiFi (included with ESP8266 board support)</li>
+                        <li>WiFiManager by tzapu</li>
+                        <li>MD_Parola by majicDesigns</li>
+                        <li>MD_MAX72XX by majicDesigns</li>
+                        <li>NTPClient by Fabrice Weinberg</li>
+                    </ul>
+                </div>
+
+                <div class="content-card">
+                    <h3>2. Setup Arduino IDE</h3>
+                    <ul>
+                        <li>Add ESP8266 board support URL: <code>http://arduino.esp8266.com/stable/package_esp8266com_index.json</code></li>
+                        <li>Install ESP8266 board package from Boards Manager</li>
+                        <li>Select your board: <code>NodeMCU 1.0 (ESP-12E Module)</code></li>
+                        <li>Set upload speed to <code>115200</code></li>
+                    </ul>
+                </div>
+
+                <div class="content-card">
+                    <h3>3. Upload & Configure</h3>
+                    <ul>
+                        <li>Upload the sketch to your ESP8266</li>
+                        <li>Connect to the <code>MultiZoneClock</code> WiFi network</li>
+                        <li>Configure your WiFi credentials</li>
+                        <li>Access the web interface at the device IP address</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <div class="container">
+                <div class="cta-buttons">
+                    <a href="https://github.com/hamidfzm/MultiZoneMatrixClock" class="btn btn-primary" target="_blank" rel="noopener noreferrer">
+                        📦 View on GitHub
+                    </a>
+                    <a href="https://github.com/hamidfzm/MultiZoneMatrixClock/archive/refs/heads/main.zip" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">
+                        📥 Download
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>Multi-Zone Matrix Clock - Open Source Project</p>
+            <div class="footer-links">
+                <a href="https://github.com/hamidfzm/MultiZoneMatrixClock">GitHub</a>
+                <a href="https://github.com/hamidfzm/MultiZoneMatrixClock/issues">Issues</a>
+                <a href="https://github.com/hamidfzm/MultiZoneMatrixClock/pulls">Contributions</a>
+            </div>
+            <p style="margin-top: 1rem; font-size: 0.9rem;">
+                Built with ❤️ using Arduino IDE and ESP8266
+            </p>
+        </div>
+    </footer>
+</body>
+</html>

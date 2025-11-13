@@ -6,6 +6,8 @@ A WiFi-enabled LED matrix clock for ESP8266 that displays time from multiple tim
 
 ![Showcase](images/showcase.png)
 
+![Web Interface](images/web-interface.jpg)
+
 ## Features
 
 - 🌍 **Multiple Timezone Support**: Display time from up to 6 different timezones (UTC, CST, EST, PST, IRST, and more)
