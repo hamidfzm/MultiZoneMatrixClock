@@ -34,6 +34,42 @@ A WiFi-enabled LED matrix clock for ESP8266 that displays time from multiple tim
 
 > **Note**: The pin definitions can be modified in `config.h` if needed.
 
+## 3D Printing
+
+This project includes 3MF files for 3D printing the enclosure and mounting components. All files are optimized for **Bambu Lab A1 Mini** and are located in the `stl/` directory.
+
+### Available 3MF Files
+
+| File | Description |
+|------|-------------|
+| `FRONT.3mf` | Front panel/enclosure |
+| `FRONT Wemos D1 Mini.3mf` | Front panel with Wemos D1 Mini mounting |
+| `BACK.3mf` | Back panel/enclosure |
+| `FRAME FRONT.3mf` | Front frame component |
+| `FRAME BACK.3mf` | Back frame component |
+| `2 x MATRIX HOLDER.3mf` | Matrix display holder (print 2x) |
+
+### Printing Instructions for Bambu Lab A1 Mini
+
+1. **Open files in Bambu Studio** (or compatible slicer)
+2. **Recommended settings**:
+   - **Layer height**: 0.2mm (standard quality) or 0.16mm (fine quality)
+   - **Infill**: 15-20% (sufficient for structural integrity)
+   - **Supports**: Enable if needed (check model orientation)
+   - **Material**: PLA or PETG recommended
+3. **Print order**:
+   - Start with the frame components (`FRAME FRONT.3mf`, `FRAME BACK.3mf`)
+   - Print the front and back panels
+   - Print 2x of the matrix holder
+4. **Assembly**: Follow the component names to assemble the enclosure
+
+### Notes
+
+- All files are provided in 3MF format for easy import into Bambu Studio
+- The models are designed to fit standard MAX7219 8x8 LED matrix modules
+- Ensure proper clearance for the ESP8266 board and wiring
+- You may need to adjust print settings based on your specific material and preferences
+
 ## Software Requirements
 
 ### Arduino IDE Libraries
@@ -135,6 +171,13 @@ MultiZoneMatrixClock/
 ├── timezone.cpp                # Timezone manager implementation
 ├── webserver.h                 # Web server manager header
 ├── webserver.cpp               # Web server manager implementation
+├── stl/                        # 3D printing files (3MF format)
+│   ├── FRONT.3mf
+│   ├── FRONT Wemos D1 Mini.3mf
+│   ├── BACK.3mf
+│   ├── FRAME FRONT.3mf
+│   ├── FRAME BACK.3mf
+│   └── 2 x MATRIX HOLDER.3mf
 └── README.md                   # This file
 ```
 
