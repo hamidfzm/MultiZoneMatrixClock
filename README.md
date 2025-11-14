@@ -4,9 +4,9 @@ A WiFi-enabled LED matrix clock for ESP8266 that displays time from multiple tim
 
 ![Multi-Zone Matrix Clock](https://img.shields.io/badge/Platform-ESP8266-blue) ![Arduino](https://img.shields.io/badge/Arduino-Compatible-green)
 
-![Showcase](images/showcase.png)
+![Showcase](docs/images/showcase.png)
 
-![Web Interface](images/web-interface.jpg)
+![Web Interface](docs/images/web-interface.jpg)
 
 ## Features
 
